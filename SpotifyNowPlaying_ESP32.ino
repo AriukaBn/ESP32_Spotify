@@ -1,5 +1,3 @@
-// ESP32 + ST7789 (240x320): Spotify-style "Now Playing" screen with album art.
-// Libraries: Adafruit GFX, Adafruit ST7735 and ST7789, ArduinoJson (v7+), TJpg_Decoder (by Bodmer).
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -21,7 +19,6 @@ const char* REFRESH_TOKEN = "AQADj3tX_FWCOy3BkrCAxQEikTEqiTJMyepFJjH7iYHvzzXxIDE
 
 // ===================================================
 
-// Display pins (ST7789 240x320; SCL->GPIO18, SDA->GPIO23)
 #define TFT_CS   5
 #define TFT_DC   2
 #define TFT_RST  4
@@ -29,34 +26,30 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 #define SCREEN_W 320
 #define SCREEN_H 240
 
-// ---------- Color tuning for your panel ----------
-#define INVERT_DISPLAY 0   // Your panel showed inverted colors with 1, so 0 is the fix. Try 1 if it ever looks negative.
-#define JPG_SWAP_BYTES 0   // Album cover scrambled/rainbow edges? Flip this between 0 and 1.
-#define SCREEN_ROTATION 1  // 1 = landscape. 3 = landscape upside down (turn the screen 180 degrees).
-#define SWAP_RB        0   // If red and blue are swapped (green looks blue/red), set 1.
-#define COLOR_TEST     1   // 1 = show red/green/blue/white bars for 3 s at startup. Set 0 when done.
+#define INVERT_DISPLAY 0 
+#define JPG_SWAP_BYTES 0   
+#define SCREEN_ROTATION 1  
+#define SWAP_RB        0 
+#define COLOR_TEST     1  
 
-// Swaps red and blue channels of an RGB565 constant when SWAP_RB is 1
 #define FIX(c) (SWAP_RB ? (uint16_t)((((c) & 0x1F) << 11) | ((c) & 0x07E0) | (((c) >> 11) & 0x1F)) : (uint16_t)(c))
 
-// Spotify-like colors (RGB565)
-#define C_BG     FIX(0x1082)   // #121212
-#define C_GREEN  FIX(0x1DCA)   // #1DB954
-#define C_GRAY   FIX(0xB596)   // #B3B3B3
-#define C_BAR    FIX(0x528A)   // #535353
+#define C_BG     FIX(0x1082)
+#define C_GREEN  FIX(0x1DCA) 
+#define C_GRAY   FIX(0xB596)   
+#define C_BAR    FIX(0x528A)   
 #define C_RED    FIX(0xF800)
 #define C_WHITE  0xFFFF
 #define C_BLACK  0x0000
 
-// ---------- State ----------
 String accessToken = "";
 unsigned long tokenExpiresAt = 0;
 
 String lastTrackId = "";
 String trackName = "", artistName = "", artUrl = "";
-int artScale = 2;                 // 300px image / 2 = 150px on screen
+int artScale = 2;                 
 long progressMs = 0, durationMs = 0;
-unsigned long pollMillis = 0;     // millis() when progressMs was read
+unsigned long pollMillis = 0;    
 bool isPlaying = false;
 bool newTrack = false;
 bool haveTrack = false;
@@ -69,8 +62,6 @@ unsigned long lastPoll = 0;
 const unsigned long POLL_INTERVAL = 3000;
 unsigned long lastTick = 0;
 
-// ---------- Text helpers ----------
-// The built-in display font is ASCII only: keep ASCII, map curly quotes/dashes, drop the rest.
 String toAscii(const String& s) {
   String o;
   size_t n = s.length();
@@ -131,7 +122,6 @@ void showMessage(const char* msg, uint16_t color = C_GREEN) {
   haveTrack = false;
 }
 
-// ---------- JPEG (album art) ----------
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
   if (y >= SCREEN_H) return 0;
 #if SWAP_RB
@@ -207,7 +197,6 @@ bool drawAlbumArt() {
   return ok;
 }
 
-// ---------- Now-playing UI ----------
 void drawText() {
   tft.fillRect(172, 0, 148, 172, C_BG);
   tft.setTextWrap(false);
@@ -237,18 +226,18 @@ void drawPlayIcon() {
 }
 
 void drawControls() {
-  // previous
+ 
   tft.fillRect(103, 210, 3, 16, C_WHITE);
   tft.fillTriangle(121, 210, 121, 226, 107, 218, C_WHITE);
-  // next
+  
   tft.fillTriangle(199, 210, 199, 226, 213, 218, C_WHITE);
   tft.fillRect(214, 210, 3, 16, C_WHITE);
-  // shuffle (decorative)
+  
   tft.drawLine(46, 226, 66, 210, C_GRAY);
   tft.drawLine(46, 210, 66, 226, C_GRAY);
   tft.fillTriangle(71, 210, 63, 206, 63, 214, C_GRAY);
   tft.fillTriangle(71, 226, 63, 222, 63, 230, C_GRAY);
-  // repeat (decorative)
+  
   tft.drawRoundRect(254, 210, 20, 16, 4, C_GRAY);
   tft.fillTriangle(270, 205, 270, 215, 277, 210, C_GRAY);
 
@@ -264,7 +253,7 @@ void drawProgress(bool force = false) {
   int fill = durationMs > 0 ? (int)((long long)w * est / durationMs) : 0;
 
   if (force || fill != lastFill) {
-    tft.fillRect(x - 7, y - 6, w + 14, 16, C_BG);          // clear bar + knob area
+    tft.fillRect(x - 7, y - 6, w + 14, 16, C_BG);       
     tft.fillRoundRect(x, y, w, h, 2, C_BAR);
     if (fill > 0) tft.fillRoundRect(x, y, fill < 4 ? 4 : fill, h, 2, C_WHITE);
     tft.fillCircle(x + fill, y + 2, 5, C_WHITE);
@@ -304,7 +293,6 @@ void drawNowPlaying() {
   haveTrack = true;
 }
 
-// ---------- Spotify auth ----------
 bool refreshAccessToken() {
   WiFiClientSecure client;
   client.setInsecure();
@@ -336,8 +324,6 @@ bool refreshAccessToken() {
   return true;
 }
 
-// ---------- Spotify: currently playing ----------
-// returns: 1 = track found, 0 = nothing playing, -1 = error
 int fetchCurrentlyPlaying() {
   if (accessToken == "" || millis() > tokenExpiresAt) {
     if (!refreshAccessToken()) return -1;
@@ -386,7 +372,6 @@ int fetchCurrentlyPlaying() {
   trackName  = doc["item"]["name"] | "Unknown";
   artistName = doc["item"]["artists"][0]["name"] | "Unknown";
 
-  // images[0]=640px, images[1]=300px, images[2]=64px. Prefer 300px (shown at half size = 150px).
   JsonArray imgs = doc["item"]["album"]["images"];
   artUrl = "";
   if (imgs.size() > 1) { artUrl = imgs[1]["url"].as<String>(); artScale = 2; }
@@ -399,16 +384,14 @@ int fetchCurrentlyPlaying() {
   return 1;
 }
 
-// ---------- Arduino ----------
 void setup() {
   Serial.begin(115200);
 
-  tft.init(240, 320);               // if blank/garbled try: tft.init(240, 320, SPI_MODE3);
+  tft.init(240, 320);
   tft.invertDisplay(INVERT_DISPLAY);
-  tft.setRotation(SCREEN_ROTATION); // landscape: 320x240
+  tft.setRotation(SCREEN_ROTATION); 
 
 #if COLOR_TEST
-  // Raw colors (not corrected). You should see RED, GREEN, BLUE, WHITE in this order.
   tft.fillRect(0,   0, 80, 240, 0xF800);
   tft.fillRect(80,  0, 80, 240, 0x07E0);
   tft.fillRect(160, 0, 80, 240, 0x001F);
@@ -448,7 +431,6 @@ void loop() {
 
   unsigned long now = millis();
 
-  // ----- Poll Spotify -----
   if (now - lastPoll >= POLL_INTERVAL) {
     lastPoll = now;
     int result = fetchCurrentlyPlaying();
@@ -466,10 +448,8 @@ void loop() {
     } else if (!haveTrack) {
       showMessage("Spotify error", C_RED);
     }
-    // on a transient error while a song is shown, keep the screen and retry
   }
 
-  // ----- Smooth progress bar (estimated between polls) -----
   if (haveTrack && now - lastTick >= 250) {
     lastTick = now;
     drawProgress();
